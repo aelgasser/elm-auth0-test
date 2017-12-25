@@ -1,0 +1,32 @@
+{
+  "name": "elm-auth0-test",
+  "description": "Test application intended to write an Elm application using Auth0 API",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aelgasser/elm-auth0-test.git"
+  },
+  "keywords": [
+    "Elm",
+    "Auth0",
+    "SPA"
+  ],
+  "author": "Abderraouf El Gasser",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aelgasser/elm-auth0-test/issues"
+  },
+  "homepage": "https://github.com/aelgasser/elm-auth0-test#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-connect": "^5.0.0",
+    "gulp-elm": "^0.7.2",
+    "gulp-plumber": "^1.1.0",
+    "gulp-util": "^3.0.8"
+  }
+}
