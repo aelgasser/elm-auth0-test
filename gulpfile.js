@@ -7,7 +7,7 @@ const connect = require('gulp-connect');
 const paths = {
     dest: 'dist',
     elm: 'src/*.elm',
-    static: 'stc/*.{html,css}'
+    static: 'src/*.{html,css}'
 };
 
 gulp.task('elm-init', elm.init);
@@ -21,9 +21,9 @@ gulp.task('elm', ['elm-init'], () => gulp
 
 gulp.task('static', () => gulp
     .src(paths.static)
-    .pipe(plumber()
+    .pipe(plumber())
     .pipe(gulp.dest(paths.dest))
-));
+);
 
 gulp.task('watch', () => {
     gulp.watch(paths.elm, ['elm']);
