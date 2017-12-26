@@ -10,7 +10,17 @@
 <body>
     
 <script>
-    var app = Elm.Main.fullscreen();
+    const storedState = localStorage.getItem('model');
+    const startingState = storedState ? JSON.parse(storedState) : null;
+    const app = Elm.Main.fullscreen(startingState);
+
+    app.ports.setStorage.subscribe(state => {
+        localStorage.setItem('model', JSON.stringify(state));
+    });
+
+    app.ports.removeStorage.subscribe(() => {
+        localStorage.removeItem('model');
+    });
 </script>    
 </body>
 </html>

@@ -1,21 +1,13 @@
 module Main exposing (..)
 
+import Model exposing (..)
+import Ports exposing (..)
 import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Http
 import Json.Decode as Decode exposing (..)
 import Json.Encode as Encode exposing (..)
-
-
-type alias Model =
-    { username : String
-    , password : String
-    , token : String
-    , quote : String
-    , errorMsg : String
-    , protectedQuote : String
-    }
 
 
 type Msg
@@ -151,7 +143,7 @@ getTokenCompleted : Model -> Result Http.Error String -> ( Model, Cmd Msg )
 getTokenCompleted model result =
     case result of
         Ok newToken ->
-            ( { model | token = newToken, password = "", errorMsg = "" } |> Debug.log "got new token", Cmd.none )
+            setStorageHelper { model | token = newToken, password = "", errorMsg = "" } |> Debug.log "got new token"
 
         Err error ->
             ( { model | errorMsg = (toString error) }, Cmd.none )
@@ -161,7 +153,7 @@ fetchRandomQuoteCompleted : Model -> Result Http.Error String -> ( Model, Cmd Ms
 fetchRandomQuoteCompleted model result =
     case result of
         Ok newQuote ->
-            ( { model | quote = newQuote }, Cmd.none )
+            setStorageHelper { model | quote = newQuote }
 
         Err _ ->
             ( model, Cmd.none )
@@ -171,10 +163,15 @@ fetchProtectedQuoteCompleted : Model -> Result Http.Error String -> ( Model, Cmd
 fetchProtectedQuoteCompleted model result =
     case result of
         Ok newQuote ->
-            ( { model | protectedQuote = newQuote }, Cmd.none )
+            setStorageHelper { model | protectedQuote = newQuote }
 
         Err _ ->
             ( model, Cmd.none )
+
+
+setStorageHelper : Model -> ( Model, Cmd Msg )
+setStorageHelper model =
+    ( model, setStorage model )
 
 
 
@@ -183,9 +180,14 @@ fetchProtectedQuoteCompleted model result =
 -}
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( Model "" "" "" "" "" "", fetchRandomQuoteCmd )
+init : Maybe Model -> ( Model, Cmd Msg )
+init model =
+    case model of
+        Just model ->
+            ( model, fetchRandomQuoteCmd )
+
+        Nothing ->
+            ( Model "" "" "" "" "" "", fetchRandomQuoteCmd )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -213,7 +215,7 @@ update msg model =
             ( model, authUserCmd model loginUrl )
 
         LogOut ->
-            ( { model | token = "", username = "" }, Cmd.none )
+            ( { model | token = "", username = "" }, removeStorage model )
 
         GetProtectedQuote ->
             ( model, fetchProtectedQuoteCmd model )
@@ -314,9 +316,9 @@ view model =
             ]
 
 
-main : Program Never Model Msg
+main : Program (Maybe Model) Model Msg
 main =
-    Html.program
+    Html.programWithFlags
         { init = init
         , update = update
         , subscriptions = \_ -> Sub.none
