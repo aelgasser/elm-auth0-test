@@ -14,6 +14,7 @@ type alias Model =
     , token : String
     , quote : String
     , errorMsg : String
+    , protectedQuote : String
     }
 
 
@@ -24,6 +25,16 @@ type Msg
     | SetPassword String
     | ClickRegisterUser
     | GetTokenCompleted (Result Http.Error String)
+    | ClickLogin
+    | LogOut
+    | GetProtectedQuote
+    | FetchProtectedQuoteCompleted (Result Http.Error String)
+
+
+
+{-
+   API Urls
+-}
 
 
 api : String
@@ -31,9 +42,30 @@ api =
     "http://localhost:3001/"
 
 
+protectedQuoteUrl : String
+protectedQuoteUrl =
+    api ++ "api/protected/random-quote"
+
+
+loginUrl : String
+loginUrl =
+    api ++ "sessions/create"
+
+
 registerUrl : String
 registerUrl =
     api ++ "users"
+
+
+randomQuoteUrl : String
+randomQuoteUrl =
+    api ++ "api/random-quote"
+
+
+
+{-
+   Encoders
+-}
 
 
 userEncoder : Model -> Encode.Value
@@ -42,6 +74,23 @@ userEncoder model =
         [ ( "username", Encode.string model.username )
         , ( "password", Encode.string model.password )
         ]
+
+
+
+{-
+   Decoders
+-}
+
+
+tokenDecoder : Decoder String
+tokenDecoder =
+    Decode.field "access_token" Decode.string
+
+
+
+{-
+   Effects
+-}
 
 
 authUser : Model -> String -> Http.Request String
@@ -53,9 +102,49 @@ authUser model apiUrl =
         Http.post apiUrl body tokenDecoder
 
 
+fetchRandomQuote : Http.Request String
+fetchRandomQuote =
+    Http.getString randomQuoteUrl
+
+
+fetchProtectedQuote : Model -> Http.Request String
+fetchProtectedQuote model =
+    { method = "GET"
+    , headers = [ Http.header "Authorization" ("Bearer " ++ model.token) ]
+    , url = protectedQuoteUrl
+    , body = Http.emptyBody
+    , expect = Http.expectString
+    , timeout = Nothing
+    , withCredentials = False
+    }
+        |> Http.request
+
+
+
+{-
+   Commands
+-}
+
+
 authUserCmd : Model -> String -> Cmd Msg
 authUserCmd model apiUrl =
     Http.send GetTokenCompleted (authUser model apiUrl)
+
+
+fetchRandomQuoteCmd : Cmd Msg
+fetchRandomQuoteCmd =
+    Http.send FetchRandomQuoteCompleted fetchRandomQuote
+
+
+fetchProtectedQuoteCmd : Model -> Cmd Msg
+fetchProtectedQuoteCmd model =
+    Http.send FetchProtectedQuoteCompleted (fetchProtectedQuote model)
+
+
+
+{-
+   Effect Callbacks
+-}
 
 
 getTokenCompleted : Model -> Result Http.Error String -> ( Model, Cmd Msg )
@@ -68,26 +157,6 @@ getTokenCompleted model result =
             ( { model | errorMsg = (toString error) }, Cmd.none )
 
 
-tokenDecoder : Decoder String
-tokenDecoder =
-    Decode.field "access_token" Decode.string
-
-
-randomQuoteUrl : String
-randomQuoteUrl =
-    api ++ "api/random-quote"
-
-
-fetchRandomQuote : Http.Request String
-fetchRandomQuote =
-    Http.getString randomQuoteUrl
-
-
-fetchRandomQuoteCmd : Cmd Msg
-fetchRandomQuoteCmd =
-    Http.send FetchRandomQuoteCompleted fetchRandomQuote
-
-
 fetchRandomQuoteCompleted : Model -> Result Http.Error String -> ( Model, Cmd Msg )
 fetchRandomQuoteCompleted model result =
     case result of
@@ -98,9 +167,25 @@ fetchRandomQuoteCompleted model result =
             ( model, Cmd.none )
 
 
+fetchProtectedQuoteCompleted : Model -> Result Http.Error String -> ( Model, Cmd Msg )
+fetchProtectedQuoteCompleted model result =
+    case result of
+        Ok newQuote ->
+            ( { model | protectedQuote = newQuote }, Cmd.none )
+
+        Err _ ->
+            ( model, Cmd.none )
+
+
+
+{-
+   Elm Program handlers
+-}
+
+
 init : ( Model, Cmd Msg )
 init =
-    ( Model "" "" "" "" "", fetchRandomQuoteCmd )
+    ( Model "" "" "" "" "" "", fetchRandomQuoteCmd )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -123,6 +208,18 @@ update msg model =
 
         GetTokenCompleted result ->
             getTokenCompleted model result
+
+        ClickLogin ->
+            ( model, authUserCmd model loginUrl )
+
+        LogOut ->
+            ( { model | token = "", username = "" }, Cmd.none )
+
+        GetProtectedQuote ->
+            ( model, fetchProtectedQuoteCmd model )
+
+        FetchProtectedQuoteCompleted result ->
+            fetchProtectedQuoteCompleted model result
 
 
 view : Model -> Html Msg
@@ -152,6 +249,9 @@ view model =
                     div [ id "greeting" ]
                         [ h3 [ class "text-center" ] [ text greeting ]
                         , p [ class "text-center" ] [ text "You have super-secret access to protected quotes." ]
+                        , p [ class "text-center" ]
+                            [ button [ class "btn btn-danger", onClick LogOut ] [ text "Log Out" ]
+                            ]
                         ]
                 else
                     div [ id "form" ]
@@ -173,8 +273,29 @@ view model =
                                 ]
                             ]
                         , div [ class "text-center" ]
-                            [ button [ class "btn btn-link", onClick ClickRegisterUser ] [ text "Register" ] ]
+                            [ button [ class "btn btn-link", onClick ClickRegisterUser ] [ text "Register" ]
+                            , button [ class "btn btn-primary", onClick ClickLogin ] [ text "Log In" ]
+                            ]
                         ]
+
+        protectedQuoteView =
+            let
+                hideIfNoProtectedQuote : String
+                hideIfNoProtectedQuote =
+                    if String.isEmpty model.protectedQuote then
+                        "hidden"
+                    else
+                        ""
+            in
+                if loggedIn then
+                    div []
+                        [ p [ class "text-center" ]
+                            [ button [ class "btn btn-info", onClick GetProtectedQuote ] [ text "Grab a protected quote!" ] ]
+                        , blockquote [ class hideIfNoProtectedQuote ]
+                            [ p [] [ text model.protectedQuote ] ]
+                        ]
+                else
+                    p [ class "text-center" ] [ text "Please log in or register to see protected quotes." ]
     in
         div [ class "container" ]
             [ h2 [ class "text-center" ] [ text "Chuck Norris Quotes" ]
@@ -186,6 +307,10 @@ view model =
                 ]
             , div [ class "jumbotron text-left" ]
                 [ authBoxView ]
+            , div []
+                [ h2 [ class "text-center" ] [ text "Protected Chuck Norris Quotes" ]
+                , protectedQuoteView
+                ]
             ]
 
 
