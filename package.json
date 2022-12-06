@@ -26,7 +26,7 @@
   "dependencies": {},
   "devDependencies": {
     "gulp": "^3.9.1",
-    "gulp-connect": "^5.0.0",
+    "gulp-connect": "^5.7.0",
     "gulp-elm": "^0.7.2",
     "gulp-plumber": "^1.1.0",
     "gulp-util": "^3.0.8"
